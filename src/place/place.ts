@@ -32,9 +32,25 @@ export interface Shape {
   trunk: { start: Vec2; heading: number; prefer: number; length: number }
   /** The heading branches settle into, radians with y down. */
   prefer: number
-  /** The repo's name, standing on the ground: from its left edge to the end of its longest line, and its type size. */
-  name(text: string): { box: Bounds; size: number }
+  /** Where the repo's name stands on the ground, and the line of words above it. */
+  name(text: string): Name
 }
+
+export interface Name {
+  /** Type size, in world px. */
+  size: number
+  /** World y the letters stand on; descenders reach down to the ground. */
+  baseline: number
+  /** From the top of the line above the name to the ground: names stay out of it. */
+  box: Bounds
+  /** The line of words above the name: twigs stay out of it too. */
+  line: Bounds
+}
+
+/** PP Mondwest's advance, in ems a character, with a little to spare: wide letters run over the average. */
+const MONDWEST = 0.5
+/** Where the name starts, in from the left edge of the opening view. */
+const NAME_LEFT = -404
 
 const GROUND = 400
 
@@ -46,9 +62,12 @@ export const wide: Shape = {
   trunk: { start: [-480, 30], heading: -0.3, prefer: 0, length: 780 },
   prefer: -0.5,
   name(text) {
-    // PP Mondwest runs about half an em a character; the name fits the opening view.
-    const size = Math.min(150, 1180 / (0.5 * text.length))
-    return { box: { minX: -404, maxX: -404 + 0.5 * size * text.length, minY: GROUND - 0.75 * size, maxY: GROUND }, size }
+    // As big as fits the opening view, up to a size that still leaves the sky to the plant.
+    const size = Math.min(150, 1180 / (MONDWEST * Math.max(text.length, 10)))
+    const baseline = GROUND - 0.26 * size
+    const top = baseline - 0.66 * size
+    const line = { minX: NAME_LEFT, maxX: NAME_LEFT + 460, minY: top - 62, maxY: top - 14 }
+    return { size, baseline, line, box: { minX: NAME_LEFT, maxX: Math.max(line.maxX, NAME_LEFT + MONDWEST * size * text.length), minY: line.minY, maxY: GROUND } }
   },
 }
 
@@ -56,7 +75,7 @@ export interface Placed {
   /** The tree to grow: the trunk and the top level placed, each folder placed when it first opens. */
   tree: FolderSpec<Entry>
   shape: Shape
-  name: { text: string; box: Bounds; size: number }
+  name: Name & { text: string }
   /** The grove id for a path in the repo, as far down as it exists. Entries past a folder's first batch sit further in. */
   idOf(path: string): string
   /** The path in the repo a grove id stands for. */

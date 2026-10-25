@@ -8,7 +8,7 @@ const CAMERA_RATE = 3.4
 /** How quickly a flung view slows down, per second. */
 const FRICTION = 5
 /** How much of the trunk's base sits off the left edge of the view. */
-const TRUNK_TUCK = 48
+export const TRUNK_TUCK = 48
 /** Breathing room kept around the plant when it spills past the view. */
 const MARGIN = 60
 

@@ -1,4 +1,6 @@
-import { Garden } from '../garden'
+import { useEffect } from 'react'
+import { Garden, type Entry } from '../garden'
+import type { Grove } from '../grove'
 import { placeRepo } from '../place'
 import { savedNames, savedRepo, type SavedName } from './trees'
 
@@ -10,7 +12,17 @@ export default function Grown() {
   const open = params.get('open')
   return (
     <main className="fixed inset-0 overflow-hidden overscroll-none bg-page">
-      <Garden tree={placed.tree} ground={placed.shape.ground} exclusive open={open ? placed.idOf(open) : undefined} />
+      <Garden tree={placed.tree} ground={placed.shape.ground} exclusive>
+        {(grove) => <Opener grove={grove} id={open ? placed.idOf(open) : null} />}
+      </Garden>
     </main>
   )
+}
+
+/** Opens a path once the plant is up, as a link would. */
+function Opener({ grove, id }: { grove: Grove<Entry>; id: string | null }) {
+  useEffect(() => {
+    if (id) grove.go(id)
+  }, [grove, id])
+  return null
 }

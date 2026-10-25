@@ -1,5 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState, useSyncExternalStore, type CSSProperties, type WheelEvent } from 'react'
-import { createGrove, type FolderSpec, type Grove, type GroveBranch, type GroveNode } from '../grove'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState, useSyncExternalStore, type CSSProperties, type ReactNode, type WheelEvent } from 'react'
+import { createGrove, type Bounds, type FolderSpec, type Grove, type GroveBranch, type GroveNode } from '../grove'
 import { sound } from '../sound'
 import type { Entry } from './entry.ts'
 import { labelArea } from './labels.ts'
@@ -7,6 +7,7 @@ import { Nodes } from './Nodes.tsx'
 import { usePlantSounds } from './sounds.ts'
 import { useDrag } from './useDrag.ts'
 import { useViewport } from './useViewport.ts'
+import type { View } from './view.ts'
 
 // three.js is ~1 MB; the page paints first and the plant grows once it arrives.
 const Scene = lazy(() => import('../scene/Scene.tsx'))
@@ -18,12 +19,14 @@ interface Props {
   ground: number
   /** Opening a folder closes its open siblings, so they can grow into the same room. */
   exclusive?: boolean
-  /** Shows a path once the plant is up, as a link would. */
-  open?: string
+  /** World areas where other words sit, such as the name on the ground: twigs stop short of them. */
+  keepOut?: Bounds[]
+  /** Whatever else lives in the plant's world, given the grove and how it's viewed: the name on the ground, the address bar. */
+  children?: (grove: Grove<Entry>, view: View) => ReactNode
 }
 
 /** A file tree drawn as a dithered plant, growing in from the left. Folders grow where they are; files open in a new tab. */
-export function Garden({ tree, ground, exclusive = false, open: opening }: Props) {
+export function Garden({ tree, ground, exclusive = false, keepOut: words = [], children }: Props) {
   const viewport = useViewport()
   const { width, height, scale, dpr } = viewport
   const [grove] = useState(() =>
@@ -34,11 +37,9 @@ export function Garden({ tree, ground, exclusive = false, open: opening }: Props
       exclusive,
     }),
   )
-  useEffect(() => {
-    if (opening) grove.go(opening)
-  }, [grove, opening])
   useSyncExternalStore(grove.subscribe, () => grove.version)
-  const keepOut = useCallback((branch: GroveBranch) => wordsNear(grove, branch), [grove])
+  const [elsewhere] = useState(words)
+  const keepOut = useCallback((branch: GroveBranch) => [...wordsNear(grove, branch), ...elsewhere], [grove, elsewhere])
   const view = useMemo(() => ({ width, height, scale, dpr }), [width, height, scale, dpr])
   const drag = useDrag(grove, scale)
   useEffect(() => grove.setView(width / scale, height / scale), [grove, width, height, scale])
@@ -71,6 +72,7 @@ export function Garden({ tree, ground, exclusive = false, open: opening }: Props
         </Suspense>
       </div>
       <Nodes grove={grove} view={view} label={tree.name} onOpen={open} />
+      {children?.(grove, view)}
     </div>
   )
 }

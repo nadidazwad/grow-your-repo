@@ -1,6 +1,6 @@
 // The file tree drawn as a plant: what grows where, and how it moves.
 // No three.js here; src/scene draws it and src/garden labels it.
-export { createGrove, type Bounds, type Grove } from './grove.ts'
+export { createGrove, TRUNK_TUCK, type Bounds, type Grove } from './grove.ts'
 export {
   curve,
   MOUTH,
