@@ -1,0 +1,239 @@
+/* Design tokens, carried over from the portfolio (~/Projects/azwad), whose type,
+   spacing and easing follow Finn Oliver Taylor's site; the page is plain white
+   and the accent is sky blue.
+   Tailwind's default palette and type scale are cleared so only these exist:
+   text-ink, bg-page, text-copy, font-mondwest, ease-out-expo, ... */
+
+@theme {
+  /* One spacing unit is one design px, as in the reference (`px-24` is 24 px).
+     The garden redefines it as one world px at the current scale. */
+  --spacing: 1px;
+
+  --color-*: initial;
+  --color-white: #fff;
+  --color-black: #000;
+  --color-page: #fff;
+  --color-panel: #f6f6f6;
+  --color-band: #ebebeb;
+  --color-ink: #111214;
+  --color-ink-strong: #000;
+  /* Both 4.5:1 or better on white; the reference's were lighter. */
+  --color-kicker: #767676;
+  --color-body: #757575;
+  --color-muted: #a6a6a6;
+  --color-faint: #c4c4c4;
+  --color-line: #dcdcdc;
+  --color-rule: #d5d5d5;
+  --color-edge: #bababa;
+  --color-well: #e6e6e6;
+  --color-pill: #e1e1e1;
+  --color-mist: #fff;
+  /* Sky blue, darkened along its hue until text in it reads at 4.6:1 on white. */
+  --color-accent: #007bb9;
+  /* The blossoms' sky blue: 1.7:1 on white, so never for text. */
+  --color-sky: #87ceeb;
+  --color-plate: #1112140e;
+  --color-scrim: #8c8c8c;
+  --color-ink-veil: #111214b8;
+  --color-line-dark: #525252;
+
+  --font-sans: 'PP Neue Montreal', 'PP Neue Montreal Fallback', ui-sans-serif, system-ui, sans-serif;
+  --font-mondwest: 'PP Mondwest', 'PP Mondwest Fallback', ui-serif, serif;
+  --font-bit: 'PP NeueBit', 'PP NeueBit Fallback', ui-monospace, monospace;
+
+  --text-*: initial;
+  --text-display: 84px;
+  --text-display--line-height: 98px;
+  --text-headline: 42px;
+  --text-headline--line-height: 45px;
+  --text-headline-sm: 30px;
+  --text-headline-sm--line-height: 34px;
+  --text-title: 35px;
+  --text-title--line-height: 40px;
+  --text-heading: 24px;
+  --text-heading--line-height: 30px;
+  --text-lead: 18px;
+  --text-lead--line-height: 25px;
+  --text-nav: 17px;
+  --text-nav--line-height: 24px;
+  --text-copy: 16px;
+  --text-copy--line-height: 25px;
+  --text-copy-tight: 16px;
+  --text-copy-tight--line-height: 22px;
+  --text-small: 14px;
+  --text-small--line-height: 20px;
+  --text-meta: 13px;
+  --text-meta--line-height: 25px;
+  --text-label: 13px;
+  --text-label--line-height: 17px;
+  --text-caption: 12px;
+  --text-caption--line-height: 18px;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-glide: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-soft: cubic-bezier(0.45, 0.05, 0.12, 1);
+
+  /* A page coming in over the plant: up from 14 px below. */
+  --animate-enter: enter 620ms var(--ease-out-expo) both;
+
+  @keyframes enter {
+    from {
+      translate: 0 14px;
+      opacity: 0;
+    }
+  }
+
+  /* A node popping into the plant: swells past full size, then settles. */
+  --animate-pop: pop 320ms ease-out both;
+
+  @keyframes pop {
+    0% {
+      scale: 0.5;
+      opacity: 0;
+    }
+    40% {
+      scale: 1.18;
+      opacity: 1;
+    }
+    70% {
+      scale: 0.97;
+    }
+    100% {
+      scale: 1;
+    }
+  }
+
+  /* A name growing out of its icon: the clip opens from the icon's side
+     (set in --sprout-from), and stops past the box so the halo shows. */
+  --animate-sprout: sprout 380ms var(--ease-out-expo) 70ms both;
+
+  @keyframes sprout {
+    from {
+      clip-path: var(--sprout-from);
+    }
+    to {
+      clip-path: inset(-10px -14px);
+    }
+  }
+
+  --animate-fade-in: fade-in 200ms ease-out both;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  /* Words or digits replacing the ones before them: up from just below. */
+  --animate-roll: roll 420ms var(--ease-out-expo) both;
+
+  @keyframes roll {
+    from {
+      translate: 0 0.45em;
+      opacity: 0;
+      filter: blur(2px);
+    }
+  }
+
+  --shadow-media: 0 1px 7px rgb(0 0 0 / 0.45);
+  --shadow-pill: 1px 1px 2px rgb(0 0 0 / 0.1);
+  --drop-shadow-pixel: 0 2.5px 5.81px rgb(0 0 0 / 0.25);
+}
+
+@layer base {
+  html {
+    min-width: 360px;
+    background-color: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* What a tap does is its own feedback; the browser's grey flash over it only says "website". */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Taps land at once, without waiting to see whether a double-tap zoom is coming. */
+  a,
+  button {
+    touch-action: manipulation;
+  }
+
+  ::selection {
+    background-color: var(--color-accent);
+    color: var(--color-white);
+  }
+}
+
+/* Words set in the world step back to grey while the visitor is off in the
+   folders; pointing at them brings their colours back. A tap leaves :hover
+   and :focus stuck on what it touched, so on a touchscreen only the keyboard does. */
+@layer utilities {
+  @media (hover: hover) {
+    [data-quiet]:not(:hover, :focus-within),
+    [data-quiet]:not(:hover, :focus-within) * {
+      color: var(--color-faint);
+    }
+  }
+
+  @media (hover: none) {
+    [data-quiet]:not(:has(:focus-visible)),
+    [data-quiet]:not(:has(:focus-visible)) * {
+      color: var(--color-faint);
+    }
+  }
+}
+
+/* A one-pixel line drawn under words from their start, carrying on across a
+   line break, instead of an underline that blinks on. `line-drawn` (or a
+   group that turns it on) draws it; taking it away rubs it back out. */
+@utility line-draw {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: var(--line-drawn, 0%) 1px;
+  transition:
+    color var(--line-fade, 150ms) ease-out,
+    background-size 340ms var(--ease-out-expo);
+}
+
+@utility line-drawn {
+  --line-drawn: 100%;
+}
+
+/* Text sitting on the plant: a page-coloured outline keeps it legible over leaves. */
+@utility halo {
+  text-shadow:
+    -1px -1px 0 var(--color-page),
+    1px -1px 0 var(--color-page),
+    -1px 1px 0 var(--color-page),
+    1px 1px 0 var(--color-page),
+    0 0 4px var(--color-page),
+    0 0 8px var(--color-page);
+}
+
+/* A pixel icon in a button lifts on hover (its one-pixel shadow shows) and
+   presses flat into the page while held: it steps one icon pixel down and to
+   the left, onto its shadow, so it never leaves the grid. Not while the press
+   has turned into a drag. Unlayered, so it wins over the utilities. */
+.pixel-shadow {
+  visibility: hidden;
+}
+
+@media (hover: hover) {
+  .group:hover .pixel-shadow {
+    visibility: visible;
+  }
+}
+
+.group:active .pixel-glyph {
+  translate: -1px 1px;
+}
+
+.group:active .pixel-shadow,
+[data-dragging] .pixel-shadow {
+  visibility: hidden;
+}
+
+[data-dragging] .group:active .pixel-glyph {
+  translate: none;
+}

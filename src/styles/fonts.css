@@ -1,0 +1,47 @@
+/* Each font ships one weight. The *Fallback faces reshape Arial to the real
+   font's metrics so text doesn't jump when the woff2 swaps in. */
+
+@font-face {
+  font-family: 'PP Neue Montreal';
+  src: url('/fonts/pp-neuemontreal-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PP Neue Montreal Fallback';
+  src: local('Arial');
+  ascent-override: 99.89%;
+  descent-override: 25.23%;
+  line-gap-override: 0%;
+  size-adjust: 95.9%;
+}
+
+@font-face {
+  font-family: 'PP Mondwest';
+  src: url('/fonts/pp-mondwest-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PP Mondwest Fallback';
+  src: local('Arial');
+  ascent-override: 902.41%;
+  descent-override: 270.78%;
+  line-gap-override: 45.18%;
+  size-adjust: 8.86%;
+}
+
+@font-face {
+  font-family: 'PP NeueBit';
+  src: url('/fonts/pp-neuebit-bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PP NeueBit Fallback';
+  src: local('Arial');
+  ascent-override: 76.5%;
+  descent-override: 20.4%;
+  line-gap-override: 5.09%;
+  size-adjust: 70.02%;
+}
