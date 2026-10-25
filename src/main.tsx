@@ -3,8 +3,9 @@ import { createRoot } from 'react-dom/client'
 import './styles/index.css'
 import App from './app/App.tsx'
 
-const Overview = import.meta.env.DEV ? lazy(() => import('./dev/Overview.tsx')) : null
+const dev = import.meta.env.DEV
+  ? { '/__overview': lazy(() => import('./dev/Overview.tsx')), '/__grown': lazy(() => import('./dev/Grown.tsx')) }
+  : null
+const Dev = dev?.[location.pathname as keyof typeof dev]
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>{Overview && location.pathname === '/__overview' ? <Overview /> : <App />}</StrictMode>,
-)
+createRoot(document.getElementById('root')!).render(<StrictMode>{Dev ? <Dev /> : <App />}</StrictMode>)

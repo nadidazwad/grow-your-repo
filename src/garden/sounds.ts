@@ -14,8 +14,16 @@ type Play = (cue: Cue, options?: PlayOptions) => void
  * going back in knocks lower. `panAt` places a sound where its node is on screen.
  */
 export function listenForSounds(grove: Grove<Entry>, play: Play, panAt: (at: Vec2) => number = () => 0) {
-  const nodes = new Map(grove.layout.nodes.map((node) => [node.id, node]))
-  const folders = grove.layout.nodes.filter((node) => node.kind === 'folder')
+  // Folders are placed as they first open, so the nodes to listen to grow too.
+  const nodes = new Map<string, GroveNode<Entry>>()
+  const folders: GroveNode<Entry>[] = []
+  const meet = () => {
+    for (const node of grove.layout.nodes.slice(nodes.size)) {
+      nodes.set(node.id, node)
+      if (node.kind === 'folder') folders.push(node)
+    }
+  }
+  meet()
   const shown = new Set(grove.layout.nodes.filter((node) => grove.isVisible(node.id)).map((node) => node.id))
   const open = new Set(folders.filter((node) => grove.isOpen(node.id)).map((node) => node.id))
   // How many of each folder's names are out, so the next one knows its note.
@@ -27,6 +35,7 @@ export function listenForSounds(grove: Grove<Entry>, play: Play, panAt: (at: Vec
   const related = (a: string, b: string) => a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`)
 
   return grove.subscribe(() => {
+    meet()
     let opened: GroveNode<Entry> | undefined
     for (const folder of folders) {
       const now = grove.isOpen(folder.id)

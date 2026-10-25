@@ -6,6 +6,8 @@ export type Entry =
       kind: 'folder'
       /** A second, quieter line under the folder's name. */
       note?: string
+      /** Shown instead of the name, as by the node holding the rest of a big folder. */
+      title?: string
     }
   | {
       kind: 'file'
@@ -14,3 +16,9 @@ export type Entry =
       /** A text file unless said otherwise. */
       glyph?: GlyphName
     }
+
+/** What a node's label reads: a folder's name ends in a slash. */
+export function nameOf(node: { name: string; kind: 'folder' | 'file'; data?: Entry }) {
+  if (node.data?.kind === 'folder' && node.data.title) return node.data.title
+  return node.kind === 'folder' ? `${node.name}/` : node.name
+}

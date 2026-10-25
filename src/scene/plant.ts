@@ -57,8 +57,8 @@ export function growPlant(branch: GroveBranch, keepOut: Bounds[] = []): Plant {
   // Folder branches thin to a dotted line over their outer third; the trunk stays stout.
   // Where a branch leaves its folder it swells, as if pushing out of the opening.
   const taper = isTrunk ? 0.6 : 1.15
-  // Bigger folders push out a fatter base.
-  const heft = Math.sqrt(branch.load)
+  // Bigger folders push out a fatter base, up to a few dozen entries: past that a crown would swamp the plant.
+  const heft = Math.sqrt(Math.min(branch.load, 36))
   const flare = isTrunk ? 0 : 0.6 + 0.45 * heft
   // Every branch, the trunk included, draws down to a fine point over its last third.
   // Clamped: a stick's last step can overshoot its length by a hair, and pow() of a negative is NaN.

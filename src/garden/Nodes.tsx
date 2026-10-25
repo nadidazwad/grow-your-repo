@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useSyncExternalStore, type CSSProperties } fro
 import type { Grove, GroveNode, LabelSide } from '../grove'
 import { glyphs, PixelIcon, type GlyphName } from '../icons'
 import { sound } from '../sound'
-import type { Entry } from './entry.ts'
+import { nameOf, type Entry } from './entry.ts'
 import { toScreen, type View } from './view.ts'
 
 interface Props {
@@ -81,7 +81,7 @@ function Folder({ node, shown, open, here, onToggle }: { node: GroveNode<Entry>;
       iconClass={`${open ? 'text-ink' : 'text-muted'} ${HOVER}`}
       // An open folder's name steps back; its contents are what matter now.
       nameClass={`${open && !here ? 'text-muted' : 'text-ink'} ${HOVER}`}
-      name={`${node.name}/`}
+      name={nameOf(node)}
       note={entry?.note}
     />
   )

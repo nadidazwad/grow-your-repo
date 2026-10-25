@@ -1,0 +1,10 @@
+{
+  "name": "garden",
+  "full_name": "nadidazwad/garden",
+  "owner": {
+    "login": "nadidazwad"
+  },
+  "default_branch": "main",
+  "description": "My portfolio: a file tree that grows as a dithered plant.",
+  "private": false
+}

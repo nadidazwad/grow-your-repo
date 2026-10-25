@@ -1,4 +1,4 @@
-import { layout, ROOT_ID, type FolderSpec, type GroveNode, type Layout, type Vec2 } from './layout.ts'
+import { layout, ROOT_ID, type FolderSpec, type GroveBranch, type GroveNode, type Layout, type Vec2 } from './layout.ts'
 
 const INTRO_DELAY = 0.35
 /** Retracting is quick: the branch snaps back into its folder. */
@@ -92,17 +92,27 @@ export function createGrove<T>(
   spec: FolderSpec<T>,
   { still = false, view: openingView = [864, 545], ground, fitWidth = false, headroom = MARGIN, exclusive = false }: Options = {},
 ): Grove<T> {
-  const world = layout(spec)
-  const nodes = new Map<string, GroveNode<T>>(world.nodes.map((node) => [node.id, node]))
-  // Children before parents, so a retracting branch sees its children's final growth.
-  const deepestFirst = [...world.branches.values()].reverse()
+  const { layout: world, place } = layout(spec)
+  const nodes = new Map<string, GroveNode<T>>()
   const childFolders = new Map<string, GroveNode<T>[]>()
-  for (const node of world.nodes) {
-    if (node.kind !== 'folder') continue
-    childFolders.set(node.parent, [...(childFolders.get(node.parent) ?? []), node])
+  const growth = new Map<string, number>()
+  // Children before parents, so a retracting branch sees its children's final growth.
+  let deepestFirst: GroveBranch[] = []
+  // Takes in whatever the layout has placed since last time.
+  const index = () => {
+    for (const node of world.nodes.slice(nodes.size)) {
+      nodes.set(node.id, node)
+      if (node.kind === 'folder') childFolders.set(node.parent, [...(childFolders.get(node.parent) ?? []), node])
+    }
+    for (const id of world.branches.keys()) if (!growth.has(id)) growth.set(id, 0)
+    deepestFirst = [...world.branches.values()].reverse()
+  }
+  index()
+  /** Places a folder that's only a seed so far. */
+  const sprout = (id: string) => {
+    if (place(id)) index()
   }
 
-  const growth = new Map<string, number>([...world.branches.keys()].map((id) => [id, 0]))
   const tweens = new Map<string, { from: number; start: number; duration: number }>()
   const expanded = new Set<string>([ROOT_ID])
   const visible = new Set<string>()
@@ -248,6 +258,7 @@ export function createGrove<T>(
     if (!node) return
     moveTo(id)
     if (node.kind === 'folder' && !expanded.has(id)) {
+      sprout(id)
       for (let at: GroveNode<T> | undefined = node; at; at = nodes.get(at.parent)) {
         if (exclusive) closeSiblings(at)
         expanded.add(at.id)
@@ -362,15 +373,26 @@ export function createGrove<T>(
     },
 
     go(path, { whole = false } = {}) {
-      let id = path.length > 1 ? path.replace(/\/+$/, '') : ROOT_ID
-      if (!id.startsWith('/')) id = `/${id}`
-      while (id !== ROOT_ID && !nodes.has(id)) id = id.slice(0, id.lastIndexOf('/')) || ROOT_ID
+      // Down the path as far as it exists, placing the folders on the way.
+      let id = ROOT_ID
+      for (const name of path.replace(/^\/+|\/+$/g, '').split('/')) {
+        const next = id === ROOT_ID ? `/${name}` : `${id}/${name}`
+        if (!name || !nodes.has(next)) break
+        id = next
+        if (nodes.get(id)!.kind === 'folder') sprout(id)
+      }
       const node = nodes.get(id)
       const folder = !node ? ROOT_ID : node.kind === 'folder' ? id : node.parent
       const onTheWay = new Set([ROOT_ID])
       for (let at = nodes.get(folder); at; at = nodes.get(at.parent)) onTheWay.add(at.id)
       wholly = whole && node?.kind === 'folder'
-      if (wholly) for (const inside of foldersIn(folder)) onTheWay.add(inside)
+      if (wholly) {
+        for (let i = 0; i < world.nodes.length; i++) {
+          const inside = world.nodes[i]
+          if (inside.kind === 'folder' && inside.id.startsWith(`${folder}/`)) sprout(inside.id)
+        }
+        for (const inside of foldersIn(folder)) onTheWay.add(inside)
+      }
       for (const folder of expanded) if (!onTheWay.has(folder)) expanded.delete(folder)
       for (const folder of onTheWay) expanded.add(folder)
       focused = folder

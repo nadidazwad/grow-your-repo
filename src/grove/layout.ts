@@ -25,7 +25,18 @@ export interface FolderSpec<T = unknown> {
   data?: T
 }
 
-export type EntrySpec<T = unknown> = FileSpec<T> | (FolderSpec<T> & { at: Vec2; label: LabelSide })
+/** A folder whose branch and contents are placed only when it first opens, so a huge tree costs only what's explored. */
+export interface SeedSpec<T = unknown> {
+  name: string
+  at: Vec2
+  label: LabelSide
+  data?: T
+  /** How many files and folders it holds, nested ones included. */
+  load: number
+  grow(): Pick<FolderSpec<T>, 'branch' | 'children'>
+}
+
+export type EntrySpec<T = unknown> = FileSpec<T> | (FolderSpec<T> & { at: Vec2; label: LabelSide }) | SeedSpec<T>
 
 export interface Polyline {
   points: Vec2[]
@@ -67,12 +78,14 @@ export interface GroveNode<T = unknown> {
   data?: T
 }
 
+/** As much of the tree as is placed so far: seeds join it as they first open. */
 export interface Layout<T = unknown> {
   rootId: string
+  /** A folder's branch always comes after its parent's. */
   branches: ReadonlyMap<string, GroveBranch>
-  /** Depth-first, so a folder always precedes its children. */
-  nodes: GroveNode<T>[]
-  bounds: { minX: number; minY: number; maxX: number; maxY: number }
+  /** A folder always comes before its children. */
+  nodes: readonly GroveNode<T>[]
+  bounds: { readonly minX: number; readonly minY: number; readonly maxX: number; readonly maxY: number }
 }
 
 export const ROOT_ID = '/'
@@ -81,11 +94,13 @@ const STEP = 2.5
 /** A node shows once the growing tip is this far past it. */
 const REVEAL_LAG = 25
 /** Where a branch leaves its folder: the top edge of the open folder icon, right of centre. */
-const MOUTH: Vec2 = [12, -11]
+export const MOUTH: Vec2 = [12, -11]
 
-export function layout<T>(spec: FolderSpec<T>): Layout<T> {
+/** Lays out what's placed of the tree; `place` grows a seed's branch and contents in, and says whether it did. */
+export function layout<T>(spec: FolderSpec<T>): { layout: Layout<T>; place(id: string): boolean } {
   const branches = new Map<string, GroveBranch>()
   const nodes: GroveNode<T>[] = []
+  const seeds = new Map<string, SeedSpec<T>>()
   const bounds = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
   const grow = ([x, y]: Vec2) => {
     bounds.minX = Math.min(bounds.minX, x)
@@ -96,13 +111,13 @@ export function layout<T>(spec: FolderSpec<T>): Layout<T> {
 
   const visit = (folder: FolderSpec<T>, id: string, parent: string | null, at: Vec2 | null) => {
     const control = at ? [[at[0] + MOUTH[0], at[1] + MOUTH[1]] as const, ...folder.branch.path] : folder.branch.path
-    const path = smooth(control)
+    const path = curve(control)
     const limbs = (folder.branch.limbs ?? []).map((points) => ({
-      ...smooth(points),
+      ...curve(points),
       from: nearest(path, points[0]),
     }))
     const focus = at ? focusOf(at, folder.children, path) : path.points[0]
-    const load = countEntries(folder)
+    const load = loadOf(folder)
     branches.set(id, {
       id,
       parent,
@@ -117,7 +132,7 @@ export function layout<T>(spec: FolderSpec<T>): Layout<T> {
 
     for (const child of folder.children) {
       const childId = id === ROOT_ID ? `/${child.name}` : `${id}/${child.name}`
-      const isFolder = 'branch' in child
+      const isFolder = 'branch' in child || 'grow' in child
       nodes.push({
         id: childId,
         name: child.name,
@@ -129,16 +144,28 @@ export function layout<T>(spec: FolderSpec<T>): Layout<T> {
         data: child.data,
       })
       grow(child.at)
-      if (isFolder) visit(child, childId, id, child.at)
+      if ('grow' in child) seeds.set(childId, child)
+      else if ('branch' in child) visit(child, childId, id, child.at)
     }
   }
 
   visit(spec, ROOT_ID, null, null)
-  return { rootId: ROOT_ID, branches, nodes, bounds }
+  return {
+    layout: { rootId: ROOT_ID, branches, nodes, bounds },
+    place(id) {
+      const seed = seeds.get(id)
+      if (!seed) return false
+      seeds.delete(id)
+      const node = nodes.find((node) => node.id === id)!
+      visit({ ...seed, ...seed.grow() }, id, node.parent, seed.at)
+      return true
+    },
+  }
 }
 
-function countEntries(folder: FolderSpec<unknown>): number {
-  return folder.children.reduce((count, child) => count + 1 + ('branch' in child ? countEntries(child) : 0), 0)
+function loadOf(folder: FolderSpec<unknown> | SeedSpec<unknown>): number {
+  if ('load' in folder) return folder.load
+  return folder.children.reduce((count, child) => count + 1 + ('branch' in child || 'grow' in child ? loadOf(child) : 0), 0)
 }
 
 /** Frames a folder's icon, its children with their labels, and its branch. */
@@ -181,8 +208,8 @@ function focusOf(at: Vec2, children: EntrySpec<unknown>[], path: Polyline): Vec2
   return [(minX + maxX) / 2, (minY + maxY) / 2 - 35]
 }
 
-/** Catmull-Rom through the control points, resampled to an even step. */
-function smooth(control: Vec2[]): Polyline {
+/** The line a branch draws through its control points: Catmull-Rom, resampled to an even step. */
+export function curve(control: readonly Vec2[]): Polyline {
   const dense: Vec2[] = []
   const at = (i: number): Vec2 => {
     if (i < 0) return mirror(control[0], control[1])

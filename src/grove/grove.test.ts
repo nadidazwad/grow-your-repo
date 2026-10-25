@@ -219,6 +219,72 @@ describe('grove', () => {
   })
 })
 
+describe('seeds', () => {
+  // Root ── s/ ── t/ ── u.txt, where s/ and t/ are only placed once they open.
+  const placed: string[] = []
+  const seeded = (): FolderSpec => ({
+    name: 'Root',
+    branch: { width: 4, path: [[0, 0], [100, 0], [200, 0]] },
+    children: [
+      {
+        name: 's',
+        at: [50, -20],
+        label: 'right',
+        load: 2,
+        grow: () => {
+          placed.push('/s')
+          return {
+            branch: { path: [[55, -100], [50, -200]] },
+            children: [
+              {
+                name: 't',
+                at: [70, -100],
+                label: 'right',
+                load: 1,
+                grow: () => {
+                  placed.push('/s/t')
+                  return { branch: { path: [[150, -100], [250, -100]] }, children: [{ name: 'u.txt', at: [200, -90], label: 'right' }] }
+                },
+              },
+            ],
+          }
+        },
+      },
+    ],
+  })
+
+  it('places a folder only when it first opens, and only once', () => {
+    placed.length = 0
+    const grove = createGrove(seeded())
+    settle(grove)
+    expect(placed).toEqual([])
+    expect(grove.layout.branches.has('/s')).toBe(false)
+
+    grove.toggle('/s')
+    settle(grove)
+    expect(placed).toEqual(['/s'])
+    expect(grove.isVisible('/s/t')).toBe(true)
+    // As stout as what it holds, though what's inside isn't placed yet.
+    expect(grove.layout.branches.get('/s')!.load).toBe(2)
+
+    grove.toggle('/s')
+    settle(grove)
+    grove.toggle('/s')
+    settle(grove)
+    expect(placed).toEqual(['/s'])
+  })
+
+  it('places the folders on the way to a deep link', () => {
+    placed.length = 0
+    const grove = createGrove(seeded())
+    grove.go('/s/t/u.txt')
+    expect(placed).toEqual(['/s', '/s/t'])
+    expect(grove.location).toBe('/s/t/u.txt')
+    settle(grove)
+    expect(grove.isVisible('/s/t/u.txt')).toBe(true)
+  })
+})
+
 describe('location', () => {
   it('grows a deep link folder by folder, then lands on the file', () => {
     const grove = createGrove(tree)

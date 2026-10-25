@@ -1,5 +1,5 @@
 import type { Bounds, GroveNode } from '../grove'
-import type { Entry } from './entry.ts'
+import { nameOf, type Entry } from './entry.ts'
 
 /** Average glyph widths, in world px, of a name (16 px) and a folder's note (12.5 px). */
 const NAME_EM = 8.4
@@ -10,9 +10,10 @@ const NOTE_EM = 6.3
  * average glyph widths rather than measured, so it works before fonts load and
  * away from the page: the plant uses it to keep twigs off words.
  */
-export function labelArea(node: GroveNode<Entry>, { icon: withIcon = true } = {}): Bounds {
+export function labelArea(node: Pick<GroveNode<Entry>, 'name' | 'kind' | 'at' | 'label' | 'data'>, { icon: withIcon = true } = {}): Bounds {
   const [x, y] = node.at
-  const name = (node.name.length + (node.kind === 'folder' ? 2 : 0)) * NAME_EM
+  // A folder's slash, and a character to spare for its wider glyphs.
+  const name = (nameOf(node).length + (node.kind === 'folder' ? 1 : 0)) * NAME_EM
   const note = node.data?.kind === 'folder' && node.data.note ? node.data.note.length * NOTE_EM : 0
   const width = Math.max(name, note)
   const depth = note ? 26 : 10

@@ -1,15 +1,15 @@
 import { Canvas, useFrame } from '@react-three/fiber'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { OrthographicCamera, Vector2 } from 'three'
-import { pixelGrid, type Bounds, type Grove, type PixelGrid } from '../grove'
+import { pixelGrid, type Bounds, type Grove, type GroveBranch, type PixelGrid } from '../grove'
 import { createDither } from './dither.ts'
 import { barkMaterial, foliageMaterial } from './materials.ts'
 import { growPlant } from './plant.ts'
 
 interface Props {
   grove: Grove
-  /** World areas where words sit (labels, the masthead): twigs stop short of them. */
-  keepOut: Bounds[]
+  /** World areas where words sit near a branch (labels, the masthead): its twigs stop short of them. */
+  keepOut: (branch: GroveBranch) => Bounds[]
   /** CSS px per world px. */
   scale: number
   dpr: number
@@ -37,6 +37,12 @@ export default function Scene({ grove, keepOut, scale, dpr, paused = false }: Pr
 }
 
 type Grid = Parameters<ReturnType<typeof createDither>['render']>[3]
+
+type Grown = ReturnType<typeof build>
+
+function build(branch: GroveBranch, keepOut: Bounds[]) {
+  return { id: branch.id, ...growPlant(branch, keepOut), barkMaterial: barkMaterial(), foliageMaterial: foliageMaterial() }
+}
 
 /**
  * Points the camera at whole cells just above and left of the view, and sets
@@ -70,17 +76,30 @@ function aim(
   camera.updateProjectionMatrix()
 }
 
-function Garden({ grove, keepOut, scale }: { grove: Grove; keepOut: Bounds[]; scale: number }) {
-  const plants = useMemo(
-    () =>
-      [...grove.layout.branches.values()].map((branch) => ({
-        id: branch.id,
-        ...growPlant(branch, keepOut),
-        barkMaterial: barkMaterial(),
-        foliageMaterial: foliageMaterial(),
-      })),
-    [grove, keepOut],
-  )
+function Garden({ grove, keepOut, scale }: { grove: Grove; keepOut: (branch: GroveBranch) => Bounds[]; scale: number }) {
+  // A branch is built once its folder is placed, which is when it first opens.
+  const [plants, setPlants] = useState<Grown[]>([])
+  useEffect(() => {
+    const built = new Map<string, Grown>()
+    const update = () => {
+      const before = built.size
+      for (const branch of grove.layout.branches.values()) {
+        if (!built.has(branch.id)) built.set(branch.id, build(branch, keepOut(branch)))
+      }
+      if (built.size !== before) setPlants([...built.values()])
+    }
+    update()
+    const unsubscribe = grove.subscribe(update)
+    return () => {
+      unsubscribe()
+      for (const plant of built.values()) {
+        plant.bark.dispose()
+        plant.foliage.dispose()
+        plant.barkMaterial.dispose()
+        plant.foliageMaterial.dispose()
+      }
+    }
+  }, [grove, keepOut])
   const camera = useMemo(() => {
     const camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 1000)
     camera.position.z = 100
@@ -89,17 +108,6 @@ function Garden({ grove, keepOut, scale }: { grove: Grove; keepOut: Bounds[]; sc
   const dither = useMemo(() => createDither(), [])
   const grid = useMemo<Grid>(() => ({ cells: new Vector2(), cell: 1, shift: new Vector2(), origin: new Vector2() }), [])
 
-  useEffect(
-    () => () => {
-      for (const plant of plants) {
-        plant.bark.dispose()
-        plant.foliage.dispose()
-        plant.barkMaterial.dispose()
-        plant.foliageMaterial.dispose()
-      }
-    },
-    [plants],
-  )
   useEffect(() => () => dither.dispose(), [dither])
 
   useFrame((state, delta) => {

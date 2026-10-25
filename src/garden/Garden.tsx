@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect, useMemo, useState, useSyncExternalStore, type CSSProperties, type WheelEvent } from 'react'
-import { createGrove, type FolderSpec, type GroveNode } from '../grove'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState, useSyncExternalStore, type CSSProperties, type WheelEvent } from 'react'
+import { createGrove, type FolderSpec, type Grove, type GroveBranch, type GroveNode } from '../grove'
 import { sound } from '../sound'
 import type { Entry } from './entry.ts'
 import { labelArea } from './labels.ts'
@@ -16,10 +16,14 @@ interface Props {
   tree: FolderSpec<Entry>
   /** World y of the ground the plant stands on. */
   ground: number
+  /** Opening a folder closes its open siblings, so they can grow into the same room. */
+  exclusive?: boolean
+  /** Shows a path once the plant is up, as a link would. */
+  open?: string
 }
 
 /** A file tree drawn as a dithered plant, growing in from the left. Folders grow where they are; files open in a new tab. */
-export function Garden({ tree, ground }: Props) {
+export function Garden({ tree, ground, exclusive = false, open: opening }: Props) {
   const viewport = useViewport()
   const { width, height, scale, dpr } = viewport
   const [grove] = useState(() =>
@@ -27,10 +31,14 @@ export function Garden({ tree, ground }: Props) {
       still: matchMedia('(prefers-reduced-motion: reduce)').matches,
       view: [width / scale, height / scale],
       ground,
+      exclusive,
     }),
   )
+  useEffect(() => {
+    if (opening) grove.go(opening)
+  }, [grove, opening])
   useSyncExternalStore(grove.subscribe, () => grove.version)
-  const [keepOut] = useState(() => grove.layout.nodes.map((node) => labelArea(node)))
+  const keepOut = useCallback((branch: GroveBranch) => wordsNear(grove, branch), [grove])
   const view = useMemo(() => ({ width, height, scale, dpr }), [width, height, scale, dpr])
   const drag = useDrag(grove, scale)
   useEffect(() => grove.setView(width / scale, height / scale), [grove, width, height, scale])
@@ -65,4 +73,11 @@ export function Garden({ tree, ground }: Props) {
       <Nodes grove={grove} view={view} label={tree.name} onOpen={open} />
     </div>
   )
+}
+
+/** The names that can show while a branch does: its own, and those along the folders it grows out of. */
+function wordsNear(grove: Grove<Entry>, branch: GroveBranch) {
+  const chain = new Set<string>()
+  for (let id: string | null = branch.id; id !== null; id = grove.layout.branches.get(id)?.parent ?? null) chain.add(id)
+  return grove.layout.nodes.filter((node) => chain.has(node.parent)).map((node) => labelArea(node))
 }

@@ -11,7 +11,7 @@ export function distance([px, py]: Vec2, box: Bounds) {
 }
 
 /** The branches that run too close to a node's label. */
-export function crowdedBy(node: GroveNode<Entry>, branches: GroveBranch[]): GroveBranch[] {
+export function crowdedBy(node: GroveNode<Entry>, branches: readonly GroveBranch[]): GroveBranch[] {
   const box = labelArea(node, { icon: false })
   // Every icon hangs off its parent's branch, and a folder's own branch leaves from its corner.
   const expected = (branch: GroveBranch, p: Vec2) =>
@@ -24,7 +24,7 @@ export function crowdedBy(node: GroveNode<Entry>, branches: GroveBranch[]): Grov
 }
 
 /** What a visitor would see wrong among what's open: labels on each other, or under branches. */
-export function problems(nodes: GroveNode<Entry>[], branches: GroveBranch[]) {
+export function problems(nodes: readonly GroveNode<Entry>[], branches: readonly GroveBranch[]) {
   const found: { ids: string[]; text: string }[] = []
   const areas = nodes.map((node) => labelArea(node))
   nodes.forEach((node, i) => {
