@@ -1,4 +1,4 @@
-import { labelArea, type Entry } from '../garden'
+import { glyphOf, labelArea, type Entry } from '../garden'
 import { curve, MOUTH, ROOT_ID, type Bounds, type EntrySpec, type FolderSpec, type LabelSide, type Polyline, type Vec2 } from '../grove'
 import { githubUrl, type File, type Folder, type Repo } from '../repo'
 import { Field } from './field.ts'
@@ -85,7 +85,7 @@ export function placeRepo(repo: Repo, shape: Shape = wide): Placed {
   const specOf = (item: Item, id: string, at: Vec2, label: LabelSide): EntrySpec<Entry> => {
     if (item.kind === 'file') {
       const { file } = item
-      return { name: file.name, at, label, data: { kind: 'file', href: href(file.path, file.submodule ? 'tree' : 'blob') } }
+      return { name: file.name, at, label, data: { kind: 'file', href: href(file.path, file.submodule ? 'tree' : 'blob'), glyph: file.submodule ? 'link' : glyphOf(file.name) } }
     }
     const children = item.kind === 'folder' ? item.folder.children : item.rest
     const load = item.kind === 'folder' ? item.folder.count : children.reduce((sum, child) => sum + 1 + (child.kind === 'folder' ? child.count : 0), 0)

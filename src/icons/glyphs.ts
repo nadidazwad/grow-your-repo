@@ -57,6 +57,38 @@ const PAGE = `
 #########
 `
 
+/** Source code: a pair of angle brackets over a short line. */
+const CODE = `
+######...
+#....##..
+#....#.#.
+#....####
+#.......#
+#..#.#..#
+#.#...#.#
+#..#.#..#
+#.......#
+#.###...#
+#.......#
+#########
+`
+
+/** Data and settings: rows of keys and values. */
+const DATA = `
+######...
+#....##..
+#....#.#.
+#....####
+#.......#
+#.##.##.#
+#.......#
+#.##.##.#
+#.......#
+#.##.##.#
+#.......#
+#########
+`
+
 const PICTURE = `
 ######...
 #....##..
@@ -216,6 +248,8 @@ export type GlyphName =
   | 'openFolder'
   | 'text'
   | 'page'
+  | 'code'
+  | 'data'
   | 'picture'
   | 'film'
   | 'link'
@@ -246,6 +280,8 @@ export const glyphs: Record<GlyphName, Glyph> = {
   openFolder: compile(OPEN_FOLDER),
   text: compile(TEXT),
   page: compile(PAGE),
+  code: compile(CODE),
+  data: compile(DATA),
   picture: compile(PICTURE),
   film: compile(FILM),
   link: compile(LINK),
