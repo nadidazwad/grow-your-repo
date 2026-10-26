@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { labelArea, nameOf, type Entry } from '../garden'
-import { createGrove, ROOT_ID, type Bounds, type GroveBranch, type GroveNode } from '../grove'
-import { placeRepo } from '../place'
+import { createGrove, ROOT_ID, TRUNK_TUCK, type Bounds, type GroveBranch, type GroveNode } from '../grove'
+import { placeRepo, tall, wide, type Shape } from '../place'
 import { problems } from './crowding.ts'
 import { savedNames, savedRepo, type SavedName } from './trees'
 
@@ -9,7 +9,7 @@ import { savedNames, savedRepo, type SavedName } from './trees'
  * Dev only: a saved repo placed as a plant, with one chain of folders open as
  * it would be on screen, drawn as lines. Crowded and overlapping labels are red.
  * `?repo=facebook/react&open=packages/react-dom/src`; `&all` lays every chain
- * one level down side by side.
+ * one level down side by side; `&shape=tall` places it for a phone.
  */
 export default function Overview() {
   const params = new URLSearchParams(location.search)
@@ -31,16 +31,16 @@ export default function Overview() {
         </a>
       </nav>
       {opens.map((open) => (
-        <Chain key={open} name={name} open={open} wide={opens.length === 1} />
+        <Chain key={open} name={name} open={open} shape={params.get('shape') === 'tall' ? tall : wide} alone={opens.length === 1} />
       ))}
     </div>
   )
 }
 
 /** Places the repo and opens the chain to `open`, timing it. */
-function lay(name: SavedName, open: string) {
+function lay(name: SavedName, open: string, shape: Shape) {
   const started = performance.now()
-  const placed = placeRepo(savedRepo(name))
+  const placed = placeRepo(savedRepo(name), shape)
   const grove = createGrove(placed.tree, { exclusive: true })
   const id = placed.idOf(open)
   grove.go(id)
@@ -52,25 +52,26 @@ function lay(name: SavedName, open: string) {
   return { placed, took, chain, branches, nodes, found: problems(nodes, branches) }
 }
 
-function Chain({ name, open, wide }: { name: SavedName; open: string; wide: boolean }) {
-  const [{ placed, took, chain, branches, nodes, found }] = useState(() => lay(name, open))
+function Chain({ name, open, shape, alone }: { name: SavedName; open: string; shape: Shape; alone: boolean }) {
+  const [{ placed, took, chain, branches, nodes, found }] = useState(() => lay(name, open, shape))
   const flagged = new Set(found.flatMap((problem) => problem.ids))
   for (const problem of found) console.info(problem.text)
 
   const { ground } = placed.shape
   const box = bounds(branches, nodes)
   const pad = 40
-  const [minX, minY] = [Math.min(box.minX, -480) - pad, Math.min(box.minY, ground - 800) - pad]
-  const [maxX, maxY] = [Math.max(box.maxX, 848) + pad, ground + pad]
+  // The opening view, resting on the ground, with the trunk entering at its left edge.
+  const frame = { x: shape.trunk.start[0] + TRUNK_TUCK, y: ground - shape.frame.height, ...shape.frame }
+  const [minX, minY] = [Math.min(box.minX, frame.x) - pad, Math.min(box.minY, frame.y) - pad]
+  const [maxX, maxY] = [Math.max(box.maxX, frame.x + frame.width) + pad, ground + pad]
   return (
-    <figure style={{ width: wide ? '100%' : 'calc(50% - 8px)' }}>
+    <figure style={{ width: alone ? '100%' : 'calc(50% - 8px)' }}>
       <figcaption className="text-muted">
         /{open} · {nodes.length} names · placed in {took.toFixed(0)} ms ·{' '}
         <span className={found.length ? 'text-[#d00]' : ''}>{found.length} problems</span>
       </figcaption>
       <svg className="block w-full border border-[#eee]" viewBox={`${minX} ${minY} ${maxX - minX} ${maxY - minY}`}>
-        {/* The opening view at 1280 × 800, resting on the ground. */}
-        <rect x={-432} y={ground - 800} width={1280} height={800} fill="none" stroke="#a6a6a6" strokeDasharray="8 6" />
+        <rect x={frame.x} y={frame.y} width={frame.width} height={frame.height} fill="none" stroke="#a6a6a6" strokeDasharray="8 6" />
         <line x1={minX} x2={maxX} y1={ground} y2={ground} stroke="#111214" />
         <rect {...rect(placed.name.box)} fill="#f3f3f3" />
         <text x={placed.name.box.minX} y={ground - 8} fontSize={placed.name.size * 0.7} fill="#ddd">

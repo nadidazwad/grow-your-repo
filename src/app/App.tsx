@@ -1,7 +1,7 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
-import { Garden, useViewport, type Entry, type View } from '../garden'
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { Garden, useNarrow, useViewport, type Entry, type View } from '../garden'
 import type { Grove } from '../grove'
-import { wide, type Placed } from '../place'
+import { placeRepo, tall, wide, type Placed } from '../place'
 import { linkOfRoute, parseLink, routeOf, type Repo, type RepoLink } from '../repo'
 import { sameRepo, useAddress } from './address.ts'
 import { Masthead } from './Masthead.tsx'
@@ -16,7 +16,11 @@ export default function App() {
   // What was typed when it couldn't be read as a repo.
   const [unread, setUnread] = useState(false)
   const growing = useRepo(link)
-  const { width, height, scale, dpr, pixel } = useViewport()
+  // A phone grows its own plant, up a column; crossing from one shape to the other grows afresh.
+  const shape = useNarrow() ? tall : wide
+  const { width, height, scale, dpr, pixel } = useViewport(shape.frame)
+  const repo = growing?.status === 'ready' ? growing.repo : null
+  const placed = useMemo(() => repo && placeRepo(repo, shape), [repo, shape])
 
   // Back or Forward onto another repo, or back to the landing; within a repo, the plant follows by itself.
   useEffect(() => {
@@ -43,11 +47,19 @@ export default function App() {
 
   const say = (lines: ReactNode) => (unread ? <Lines.Unread /> : lines)
 
-  if (growing?.status === 'ready') {
-    const { repo, placed } = growing
+  if (repo && placed) {
     return (
       <main className="fixed inset-0 overflow-hidden overscroll-none bg-page">
-        <Garden key={`${repo.owner}/${repo.name}@${repo.ref}`} tree={placed.tree} ground={placed.shape.ground} exclusive keepOut={[placed.name.line]}>
+        <Garden
+          key={`${repo.owner}/${repo.name}@${repo.ref}/${shape === tall ? 'tall' : 'wide'}`}
+          tree={placed.tree}
+          ground={shape.ground}
+          frame={shape.frame}
+          fitWidth={shape.fitWidth}
+          headroom={shape.headroom}
+          exclusive
+          keepOut={[placed.name.line]}
+        >
           {(grove, view) => <Grown grove={grove} view={view} repo={repo} placed={placed} line={say(<Lines.About repo={repo} />)} onGrow={grow} />}
         </Garden>
       </main>
@@ -57,14 +69,14 @@ export default function App() {
   const name = link ? `${link.owner}/${link.repo}` : ''
   const line = !growing ? (
     <Lines.Welcome examples={EXAMPLES} onPick={grow} />
-  ) : growing.status === 'loading' ? (
-    <Lines.Asking name={name} />
-  ) : (
+  ) : growing.status === 'failed' ? (
     <Lines.Failed name={name} failure={growing.failure} />
+  ) : (
+    <Lines.Asking name={name} />
   )
   return (
     <main className="fixed inset-0 overflow-hidden overscroll-none bg-page" style={{ '--spacing': `${scale}px`, '--px': `${pixel}px` } as CSSProperties}>
-      <Masthead key={name} name={name} line={say(line)} onGrow={grow} shape={wide} view={{ width, height, scale, dpr }} />
+      <Masthead key={name} name={name} line={say(line)} onGrow={grow} shape={shape} view={{ width, height, scale, dpr }} />
     </main>
   )
 }

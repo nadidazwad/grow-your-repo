@@ -3,8 +3,8 @@ import { problems } from '../dev/crowding.ts'
 import { savedRepo } from '../dev/trees'
 import { labelArea } from '../garden'
 import { createGrove, ROOT_ID } from '../grove'
-import type { Folder, Repo } from '../repo'
-import { BATCH, MORE, placeRepo } from '.'
+import { buildTree, type Folder, type Repo } from '../repo'
+import { MORE, placeRepo, wide } from '.'
 
 /** Opens a path the way a visitor would, and returns what's on screen: the open chain's branches and names. */
 function openTo(repo: Repo, path: string) {
@@ -69,7 +69,7 @@ describe('placeRepo', () => {
     const folder = 'compiler/packages/babel-plugin-react-compiler/src/__tests__/fixtures/compiler'
     const { placed, nodes, id } = openTo(repo, folder)
     const along = nodes.filter((node) => node.parent === id)
-    expect(along).toHaveLength(BATCH + 1)
+    expect(along).toHaveLength(wide.batch + 1)
     const more = along[along.length - 1]
     expect(more.name).toBe(MORE)
     expect(more.data).toMatchObject({ kind: 'folder', title: '+ 2,721 more' })
@@ -82,5 +82,14 @@ describe('placeRepo', () => {
     expect(placed.pathOf(deep)).toBe(fortieth)
     // Opening it grows both batches before it, clear of each other.
     expect(faults(repo, fortieth)).toEqual([])
+  })
+
+  it('finds an entry in a last batch that took in a few spare', () => {
+    // 33 entries: 15 on the folder's branch, then all 18 left on the next, rather than 15 and "+ 3 more".
+    const entries = Array.from({ length: 33 }, (_, i) => ({ path: `many/${String(i).padStart(2, '0')}.txt`, type: 'blob' as const }))
+    const repo = { ...savedRepo('nadidazwad/garden'), root: buildTree(entries) }
+    const { placed } = openTo(repo, '')
+    expect(placed.idOf('many/32.txt')).toBe(`/many/${MORE}/32.txt`)
+    expect(placed.idOf('many/14.txt')).toBe('/many/14.txt')
   })
 })

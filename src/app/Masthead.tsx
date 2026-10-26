@@ -38,8 +38,11 @@ export function Masthead({ name, line, onGrow, shape, view, grove }: Props) {
   const [editing, setEditing] = useState(!grove)
   const [text, setText] = useState(name)
   const shown = editing ? text || PLACEHOLDER : name
-  const geometry = shape.name(shown)
-  const { size, baseline } = geometry
+  // Typing, it's one line; standing, a phone stacks the owner over the repo.
+  const geometry = shape.name(shown, editing)
+  const { size, baseline, leading, lines } = geometry
+  // From the top of the first line's box to the last line's baseline.
+  const drop = (lines.length - 1) * leading + BASELINE * size
   const anchor: Vec2 = [geometry.line.minX, geometry.line.maxY]
   const place = usePlaced(grove ?? null, view, shape, anchor)
   const crossing = useCrossing(grove ?? null, geometry.box)
@@ -65,8 +68,8 @@ export function Masthead({ name, line, onGrow, shape, view, grove }: Props) {
   }
 
   const [owner, repo] = splitName(name)
-  // From the bottom of the line to the top of the name's line box.
-  const nameTop = baseline - BASELINE * size - anchor[1]
+  // From the bottom of the line to the top of the name's first line box.
+  const nameTop = baseline - drop - anchor[1]
   return (
     <>
       {grove && <SmallName name={name} shown={!titleShows} onClick={() => grove.go(ROOT_ID)} />}
@@ -83,7 +86,7 @@ export function Masthead({ name, line, onGrow, shape, view, grove }: Props) {
           style={{
             top: w(nameTop),
             // About the left end of the baseline, so it stays standing on the ground.
-            transformOrigin: `0 ${w(BASELINE * size)}`,
+            transformOrigin: `0 ${w(drop)}`,
             scale: crossing ? TUCKED : 1,
           }}
         >
@@ -123,8 +126,13 @@ export function Masthead({ name, line, onGrow, shape, view, grove }: Props) {
                 style={{ fontSize: w(size), lineHeight: w(size) }}
                 aria-label={`${name}: type or paste another repo`}
               >
-                <span className="text-faint transition-colors duration-200 group-hover:text-muted">{owner}</span>
-                <span className="text-ink transition-colors duration-200 group-hover:text-accent group-focus-visible:text-accent">{repo}</span>
+                <span className={`${lines.length > 1 ? 'block' : ''} text-faint transition-colors duration-200 group-hover:text-muted`}>{owner}</span>
+                <span
+                  className={`${lines.length > 1 ? 'block' : ''} text-ink transition-colors duration-200 group-hover:text-accent group-focus-visible:text-accent`}
+                  style={lines.length > 1 ? { marginTop: w(leading - size) } : undefined}
+                >
+                  {repo}
+                </span>
               </button>
             )}
           </form>

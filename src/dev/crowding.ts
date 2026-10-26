@@ -23,13 +23,17 @@ export function crowdedBy(node: GroveNode<Entry>, branches: readonly GroveBranch
   )
 }
 
-/** What a visitor would see wrong among what's open: labels on each other, or under branches. */
+/** What a visitor would see wrong among what's open: icons or names on each other, or names under branches. */
 export function problems(nodes: readonly GroveNode<Entry>[], branches: readonly GroveBranch[]) {
   const found: { ids: string[]; text: string }[] = []
-  const areas = nodes.map((node) => labelArea(node))
+  // What's drawn: the icon and the name. A name hung under its icon leaves the corners beside the icon empty.
+  const parts = nodes.map((node) => {
+    const [x, y] = node.at
+    return [{ minX: x - 18, maxX: x + 18, minY: y - 18, maxY: y + 18 }, labelArea(node, { icon: false })]
+  })
   nodes.forEach((node, i) => {
     for (let j = i + 1; j < nodes.length; j++) {
-      if (overlaps(areas[i], areas[j])) found.push({ ids: [node.id, nodes[j].id], text: `${node.id} and ${nodes[j].id} overlap` })
+      if (parts[i].some((a) => parts[j].some((b) => overlaps(a, b)))) found.push({ ids: [node.id, nodes[j].id], text: `${node.id} and ${nodes[j].id} overlap` })
     }
     const near = crowdedBy(node, branches)
     if (near.length) found.push({ ids: [node.id], text: `${node.id} is crowded by ${near.map((branch) => branch.id).join(', ')}` })

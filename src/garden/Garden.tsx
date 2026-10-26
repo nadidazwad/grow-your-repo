@@ -6,7 +6,7 @@ import { labelArea } from './labels.ts'
 import { Nodes } from './Nodes.tsx'
 import { usePlantSounds } from './sounds.ts'
 import { useDrag } from './useDrag.ts'
-import { useViewport } from './useViewport.ts'
+import { useViewport, type Frame } from './useViewport.ts'
 import type { View } from './view.ts'
 
 // three.js is ~1 MB; the page paints first and the plant grows once it arrives.
@@ -17,6 +17,12 @@ interface Props {
   tree: FolderSpec<Entry>
   /** World y of the ground the plant stands on. */
   ground: number
+  /** The view it's drawn for: the screen scales to fit it. */
+  frame: Frame
+  /** The plant fits the width of the view, so the view only moves up and down. */
+  fitWidth?: boolean
+  /** World px the view can rise above the plant. */
+  headroom?: number
   /** Opening a folder closes its open siblings, so they can grow into the same room. */
   exclusive?: boolean
   /** World areas where other words sit, such as the name on the ground: twigs stop short of them. */
@@ -26,14 +32,16 @@ interface Props {
 }
 
 /** A file tree drawn as a dithered plant, growing in from the left. Folders grow where they are; files open in a new tab. */
-export function Garden({ tree, ground, exclusive = false, keepOut: words = [], children }: Props) {
-  const viewport = useViewport()
+export function Garden({ tree, ground, frame, fitWidth, headroom, exclusive = false, keepOut: words = [], children }: Props) {
+  const viewport = useViewport(frame)
   const { width, height, scale, dpr } = viewport
   const [grove] = useState(() =>
     createGrove(tree, {
       still: matchMedia('(prefers-reduced-motion: reduce)').matches,
       view: [width / scale, height / scale],
       ground,
+      fitWidth,
+      headroom,
       exclusive,
     }),
   )

@@ -5,8 +5,8 @@ const STEP = 6
 /** The most a branch turns in one step: it never bends tighter than about a 75 px radius. */
 const TURN = 0.08
 /** How far ahead the walk looks for trouble, in steps of `LOOK` px. */
-const AHEAD = 5
-const LOOK = 15
+const AHEAD = 6
+const LOOK = 18
 
 export interface Walk {
   start: Vec2
@@ -55,21 +55,26 @@ export function walk({ start, heading, want, length, cost }: Walk) {
   return { points, paid }
 }
 
+/** A stretch of a branch: which way it heads, and for how long, each picked from a range. */
+export interface Gesture {
+  heading: [number, number]
+  length: [number, number]
+}
+
 /**
  * The headings a branch wants along its length, drawn the way the hand-placed
- * ones go: it runs out of its folder, then alternates between climbing and
- * running on, each for a stretch, rising overall.
+ * ones go: it runs out of its folder for a stretch, then alternates between
+ * two gestures, such as climbing and running on, starting with whichever turns
+ * it away from the way it set out, or with the other if `flip`.
  */
-export function gestures(rng: () => number, { out, run, climb, from }: { out: number; run: [number, number]; climb: [number, number]; from: number }) {
+export function gestures(rng: () => number, out: number, from: number, pair: [Gesture, Gesture], { flip = false } = {}) {
   const turns: { at: number; heading: number }[] = [{ at: 0, heading: out }]
-  let at = from
-  // After a steep start it levels off first; after a shallow one it climbs.
-  let climbing = out > (run[1] + climb[0]) / 2
-  while (at < 6000) {
-    const [low, high] = climbing ? climb : run
-    turns.push({ at, heading: low + (high - low) * rng() })
-    at += climbing ? 70 + rng() * 110 : 110 + rng() * 170
-    climbing = !climbing
+  const middle = ({ heading: [low, high] }: Gesture) => (low + high) / 2
+  let next = Math.abs(middle(pair[0]) - out) >= Math.abs(middle(pair[1]) - out) !== flip ? 0 : 1
+  for (let at = from; at < 6000; next = 1 - next) {
+    const { heading, length } = pair[next]
+    turns.push({ at, heading: heading[0] + (heading[1] - heading[0]) * rng() })
+    at += length[0] + (length[1] - length[0]) * rng()
   }
   return (s: number) => {
     let i = 0
