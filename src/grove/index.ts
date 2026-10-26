@@ -4,6 +4,7 @@ export { createGrove, TRUNK_TUCK, type Bounds, type Grove } from './grove.ts'
 export {
   curve,
   MOUTH,
+  revealAt,
   ROOT_ID,
   type BranchSpec,
   type EntrySpec,

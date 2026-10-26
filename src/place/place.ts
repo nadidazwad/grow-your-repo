@@ -1,11 +1,11 @@
 import { glyphOf, labelArea, type Entry } from '../garden'
-import { curve, MOUTH, ROOT_ID, type Bounds, type EntrySpec, type FolderSpec, type LabelSide, type Polyline, type Vec2 } from '../grove'
+import { curve, MOUTH, revealAt, ROOT_ID, type Bounds, type EntrySpec, type FolderSpec, type LabelSide, type Polyline, type Vec2 } from '../grove'
 import { githubUrl, type File, type Folder, type Repo } from '../repo'
 import { Field } from './field.ts'
 import { random } from './random.ts'
 import { routesOut } from './routes.ts'
 import { wide, type Name, type Shape } from './shapes.ts'
-import { gestures, thin, walk } from './walk.ts'
+import { gestures, steady, thin, walk } from './walk.ts'
 
 /** A folder only this many over a batch shows them all rather than "+ 2 more". */
 const SPARE = 3
@@ -53,8 +53,19 @@ interface Words {
 interface Placement {
   parent: string | null
   path: Polyline
-  /** Each entry's icon and label, by id. */
-  words: Map<string, Words>
+  /** Each entry's icon and label, and how far the branch grows before it shows, by id. */
+  words: Map<string, Words & { reveal: number }>
+}
+
+/** As much of a placed branch as shows while it's drawn back to `reach`, as the grove's `foldAway` draws it back to the folder open on it. */
+function drawnBack({ parent, path, words }: Placement, reach: number): Placement {
+  const end = path.lengths.findIndex((length) => length > reach)
+  const points = end === -1 ? path.points : path.points.slice(0, end)
+  return {
+    parent,
+    path: { points, lengths: path.lengths.slice(0, points.length), length: Math.min(path.length, reach) },
+    words: new Map([...words].filter(([, { reveal }]) => reveal <= reach)),
+  }
 }
 
 type Item = { kind: 'file'; file: File } | { kind: 'folder'; folder: Folder } | { kind: 'more'; rest: (Folder | File)[] }
@@ -102,9 +113,13 @@ export function placeRepo(repo: Repo, shape: Shape = wide): Placed {
   const grow = (id: string, items: Item[], at: Vec2 | null, load: number) => {
     const parent = at ? id.slice(0, id.lastIndexOf('/')) || ROOT_ID : null
     const chain: Placement[] = []
-    for (let p = parent; p !== null; p = placements.get(p)!.parent) chain.push(placements.get(p)!)
+    for (let through = id, p = parent; p !== null; through = p, p = placements.get(p)!.parent) {
+      const placement = placements.get(p)!
+      chain.push(shape.foldAway ? drawnBack(placement, placement.words.get(through)!.reveal) : placement)
+    }
     const placed = placeBranch({ id, items, at, chain, shape, avoid: name.box })
-    placements.set(id, { parent, path: placed.drawn, words: new Map(placed.hung.map((h, i) => [childId(id, nameOfItem(items[i])), h.words])) })
+    const words = placed.hung.map((h, i) => [childId(id, nameOfItem(items[i])), { ...h.words, reveal: revealAt(placed.drawn, h.at) }] as const)
+    placements.set(id, { parent, path: placed.drawn, words: new Map(words) })
     return {
       branch: { path: placed.path, width: at ? Math.min(2.4 + 0.9 * Math.sqrt(load), 7) : 8.5 },
       children: placed.hung.map((h, i) => specOf(items[i], childId(id, nameOfItem(items[i])), h.at, h.label)),
@@ -201,7 +216,7 @@ function placeBranch(job: BranchJob) {
     const normal: Vec2 = [tangent[1], -tangent[0]]
     const side = Math.sign((at[0] - point[0]) * normal[0] + (at[1] - point[1]) * normal[1]) || 1
     below = side < 0 && normal[1] < 0
-    const out = outward(tangent, side, id.endsWith(`/${MORE}`))
+    const out = outward(tangent, side, id.endsWith(`/${MORE}`), shape.lift)
     heading = Math.atan2(out[1], out[0])
   }
   const start: Vec2 = at ? [at[0] + MOUTH[0], at[1] + MOUTH[1]] : shape.trunk.start
@@ -248,8 +263,8 @@ function placeBranch(job: BranchJob) {
   // Each label must stay clear of everything already on the plant, and each
   // folder's corridor out of the words, the branches and the ground. If no
   // seed can hang everything that way, as when a name is wider than a phone,
-  // the words only keep off each other and out of the ground; and failing
-  // even that, only out of the ground.
+  // the words only keep off each other, out from under branches and out of
+  // the ground; and failing even that, only out of the ground.
   let rules: 'all' | 'words' | 'ground' = 'all'
   const clear = (parts: Bounds[], label: Bounds) =>
     parts.every(
@@ -258,7 +273,7 @@ function placeBranch(job: BranchJob) {
         (rules === 'ground' || (words.nearest(part, WORD_GAP) >= WORD_GAP && (ownIcon === null || apart(part, ownIcon, WORD_GAP)))) &&
         (rules !== 'all' || (part.minX >= shape.left && part.maxX <= shape.right && paths.nearest(part, 36) >= 36)),
     ) &&
-    (rules !== 'all' || paths.nearest(label, TWIG_REACH) >= TWIG_REACH)
+    (rules === 'all' ? paths.nearest(label, TWIG_REACH) >= TWIG_REACH : rules === 'ground' || paths.nearest(label, CROWDED) >= CROWDED)
   const open = (point: Vec2) =>
     point[1] <= floor &&
     (rules === 'ground' || words.distance(point, CORRIDOR_ROOM) >= CORRIDOR_ROOM) &&
@@ -281,6 +296,7 @@ function placeBranch(job: BranchJob) {
       heading: setOff,
       want: at ? gestures(rng, setOff, 90, shape.sway(below), { flip }) : gestures(rng, setOff, shape.trunk.straight, shape.trunk.sway, { flip }),
       cost,
+      bounce: shape.bounce === undefined ? undefined : { walls: shape.walls, margin: shape.bounce },
     }
     const hangRng = random(`${id}#${attempt}/hang`)
     // Walked generously once, then trimmed past the last entry; walked again further only if it ran out.
@@ -288,7 +304,7 @@ function placeBranch(job: BranchJob) {
       const { points, paid } = walk({ ...steer, length })
       const control = thin(points, 30)
       const drawn = curve(control)
-      const hung = hang(job.items, drawn, { clear, open }, hangRng, at ? 56 : 150, !at, shape.spread)
+      const hung = hang(job.items, drawn, { clear, open }, hangRng, at ? 56 : 150, !at, shape.spread, shape.lift)
       if (!hung) continue
       // Trim past the last entry, leaving the tip to run on a little.
       const last = hung[hung.length - 1]?.s ?? 0
@@ -310,7 +326,7 @@ function placeBranch(job: BranchJob) {
   }
   // Nothing fits however it's tried: hang them along the branch anyway, a step apart, rather than not grow at all.
   if (!best) {
-    const { points } = walk({ start, heading, want: () => heading, length: 80 * job.items.length + 200, cost })
+    const { points } = walk({ start, heading, want: steady(heading), length: 80 * job.items.length + 200, cost })
     const path = thin(points, 30)
     const drawn = curve(path)
     const hung = job.items.map((item, i): Hung => {
@@ -332,11 +348,11 @@ const CORRIDOR = 110
 const CORRIDOR_ROOM = 26
 
 /** Which way a folder's branch leaves it: out from the side of the branch it hangs on, and on along it. */
-function outward(tangent: Vec2, side: number, more: boolean): Vec2 {
+function outward(tangent: Vec2, side: number, more: boolean, lift: number): Vec2 {
   // The rest of a big folder carries on where its branch left off.
   const push = more ? 0.4 : 1
   const x = tangent[1] * side * push + tangent[0] * 0.8
-  const y = -tangent[0] * side * push + tangent[1] * 0.8
+  const y = -tangent[0] * side * push + tangent[1] * 0.8 - lift
   const length = Math.hypot(x, y)
   return [x / length, y / length]
 }
@@ -356,6 +372,7 @@ function hang(
   trunk: boolean,
   /** About how far along the branch its entries spread, all told. */
   room: number,
+  lift: number,
 ): Hung[] | null {
   const own = new Field()
   own.addPoints(drawn.points.filter((_, i) => i % 2 === 0))
@@ -386,7 +403,7 @@ function hang(
         const corridorOpen = () => {
           if (corridor) return true
           if (kind !== 'folder') return (corridor = []), true
-          const out = outward(tangent, side, item.kind === 'more')
+          const out = outward(tangent, side, item.kind === 'more', lift)
           const mouth: Vec2 = [at[0] + MOUTH[0], at[1] + MOUTH[1]]
           const points: Vec2[] = []
           for (let d = 0; d <= CORRIDOR; d += 12) points.push([mouth[0] + out[0] * d, mouth[1] + out[1] * d])

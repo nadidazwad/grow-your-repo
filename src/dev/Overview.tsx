@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { labelArea, nameOf, type Entry } from '../garden'
 import { createGrove, ROOT_ID, TRUNK_TUCK, type Bounds, type GroveBranch, type GroveNode } from '../grove'
 import { placeRepo, tall, wide, type Shape } from '../place'
-import { problems } from './crowding.ts'
+import { problems, showing } from './crowding.ts'
 import { savedNames, savedRepo, type SavedName } from './trees'
 
 /**
@@ -41,14 +41,12 @@ export default function Overview() {
 function lay(name: SavedName, open: string, shape: Shape) {
   const started = performance.now()
   const placed = placeRepo(savedRepo(name), shape)
-  const grove = createGrove(placed.tree, { exclusive: true })
+  const grove = createGrove(placed.tree, { exclusive: true, foldAway: shape.foldAway, still: true })
   const id = placed.idOf(open)
   grove.go(id)
+  const { nodes, branches } = showing(grove)
   const took = performance.now() - started
-  const chain = new Set<string>([ROOT_ID])
-  for (let at = id; at !== ROOT_ID; at = at.slice(0, at.lastIndexOf('/')) || ROOT_ID) if (grove.layout.branches.has(at)) chain.add(at)
-  const branches = [...grove.layout.branches.values()].filter((branch) => chain.has(branch.id))
-  const nodes = grove.layout.nodes.filter((node) => chain.has(node.parent))
+  const chain = new Set(branches.map((branch) => branch.id))
   return { placed, took, chain, branches, nodes, found: problems(nodes, branches) }
 }
 

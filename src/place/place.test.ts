@@ -1,25 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { problems } from '../dev/crowding.ts'
+import { problems, showing } from '../dev/crowding.ts'
 import { savedRepo } from '../dev/trees'
 import { labelArea } from '../garden'
-import { createGrove, ROOT_ID } from '../grove'
+import { createGrove } from '../grove'
 import { buildTree, type Folder, type Repo } from '../repo'
-import { MORE, placeRepo, wide } from '.'
+import { MORE, placeRepo, tall, wide, type Shape } from '.'
 
-/** Opens a path the way a visitor would, and returns what's on screen: the open chain's branches and names. */
-function openTo(repo: Repo, path: string) {
-  const placed = placeRepo(repo)
-  const grove = createGrove(placed.tree, { exclusive: true })
+/** Opens a path the way a visitor would, and returns what's on screen once it settles: the branches as far as they've grown, and the names showing. */
+function openTo(repo: Repo, path: string, shape: Shape = wide) {
+  const placed = placeRepo(repo, shape)
+  const grove = createGrove(placed.tree, { exclusive: true, foldAway: shape.foldAway, still: true })
   const id = placed.idOf(path)
   grove.go(id)
-  const chain = new Set([ROOT_ID])
-  for (let at = id; at !== ROOT_ID; at = at.slice(0, at.lastIndexOf('/')) || ROOT_ID) if (grove.layout.branches.has(at)) chain.add(at)
-  return {
-    placed,
-    id,
-    branches: [...grove.layout.branches.values()].filter((branch) => chain.has(branch.id)),
-    nodes: grove.layout.nodes.filter((node) => chain.has(node.parent)),
-  }
+  return { placed, id, ...showing(grove) }
 }
 
 function folders(folder: Folder): string[] {
@@ -27,8 +20,8 @@ function folders(folder: Folder): string[] {
 }
 
 /** What a visitor would see wrong: names on names or under branches, the name on the ground covered, or anything underground. */
-function faults(repo: Repo, path: string) {
-  const { placed, branches, nodes } = openTo(repo, path)
+function faults(repo: Repo, path: string, shape: Shape = wide) {
+  const { placed, branches, nodes } = openTo(repo, path, shape)
   const { ground } = placed.shape
   const found = problems(nodes, branches).map((problem) => problem.text)
   for (const branch of branches) {
@@ -47,6 +40,11 @@ describe('placeRepo', () => {
   it('opens every folder of a small repo with nothing on anything else', () => {
     const repo = savedRepo('nadidazwad/garden')
     for (const path of ['', ...folders(repo.root)]) expect(faults(repo, path), path).toEqual([])
+  })
+
+  it('opens every folder of a small repo on a phone with nothing on anything else', () => {
+    const repo = savedRepo('nadidazwad/garden')
+    for (const path of ['', ...folders(repo.root)]) expect(faults(repo, path, tall), path).toEqual([])
   })
 
   it('opens a huge repo’s top folders, crowded batches and deepest chain cleanly too', () => {

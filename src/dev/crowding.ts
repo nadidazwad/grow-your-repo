@@ -1,5 +1,5 @@
 import { labelArea, type Entry } from '../garden'
-import type { Bounds, GroveBranch, GroveNode, Vec2 } from '../grove'
+import type { Bounds, Grove, GroveBranch, GroveNode, Vec2 } from '../grove'
 
 /** Labels with less breathing room than this from a branch (leaves included) or a twig get flagged. */
 const ROOM = { branch: 22, limb: 10 }
@@ -42,3 +42,25 @@ export function problems(nodes: readonly GroveNode<Entry>[], branches: readonly 
 }
 
 const overlaps = (a: Bounds, b: Bounds) => a.minX < b.maxX && a.maxX > b.minX && a.minY < b.maxY && a.maxY > b.minY
+
+/**
+ * What's on screen once a grove settles: the names showing, and each branch as
+ * far as it has grown. Growth lands at once only in a `still` grove.
+ */
+export function showing<T>(grove: Grove<T>) {
+  const growth = () => [...grove.layout.branches.keys()].map((id) => grove.growth(id)).join()
+  for (let i = 0, last = ''; i < 500 && growth() !== last; i++) {
+    last = growth()
+    grove.step(1 / 60)
+  }
+  const nodes = grove.layout.nodes.filter((node) => grove.isVisible(node.id))
+  const branches = [...grove.layout.branches.values()].flatMap((branch): GroveBranch[] => {
+    const grown = grove.growth(branch.id)
+    if (grown <= 0) return []
+    const end = branch.path.lengths.findIndex((length) => length > grown)
+    if (end === -1) return [branch]
+    const path = { points: branch.path.points.slice(0, end), lengths: branch.path.lengths.slice(0, end), length: grown }
+    return [{ ...branch, path, limbs: branch.limbs.filter((limb) => limb.from <= grown) }]
+  })
+  return { nodes, branches }
+}

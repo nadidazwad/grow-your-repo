@@ -140,7 +140,7 @@ export function layout<T>(spec: FolderSpec<T>): { layout: Layout<T>; place(id: s
         parent: id,
         at: child.at,
         label: child.label,
-        revealAt: Math.min(nearest(path, child.at) + REVEAL_LAG, path.length),
+        revealAt: revealAt(path, child.at),
         data: child.data,
       })
       grow(child.at)
@@ -161,6 +161,11 @@ export function layout<T>(spec: FolderSpec<T>): { layout: Layout<T>; place(id: s
       return true
     },
   }
+}
+
+/** How far a branch has grown when an entry hung at `at` shows: once its growing tip is a little past it. */
+export function revealAt(path: Polyline, at: Vec2) {
+  return Math.min(nearest(path, at) + REVEAL_LAG, path.length)
 }
 
 function loadOf(folder: FolderSpec<unknown> | SeedSpec<unknown>): number {

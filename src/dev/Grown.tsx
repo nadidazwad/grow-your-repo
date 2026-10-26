@@ -13,7 +13,7 @@ export default function Grown() {
   const open = params.get('open')
   return (
     <main className="fixed inset-0 overflow-hidden overscroll-none bg-page">
-      <Garden tree={placed.tree} ground={shape.ground} frame={shape.frame} fitWidth={shape.fitWidth} headroom={shape.headroom} exclusive>
+      <Garden tree={placed.tree} ground={shape.ground} frame={shape.frame} fitWidth={shape.fitWidth} headroom={shape.headroom} exclusive foldAway={shape.foldAway}>
         {(grove) => <Opener grove={grove} id={open ? placed.idOf(open) : null} />}
       </Garden>
     </main>

@@ -86,11 +86,18 @@ interface Options {
    * same room. The newly opened branch waits until the old one is back in.
    */
   exclusive?: boolean
+  /**
+   * An open folder's branch grows only as far as the child folder open on it:
+   * what hangs further along folds away, and that folder's own branch climbs
+   * on into the room it leaves. Closing the folder grows it all back. For a
+   * plant up one narrow column, where nothing else has room beside it.
+   */
+  foldAway?: boolean
 }
 
 export function createGrove<T>(
   spec: FolderSpec<T>,
-  { still = false, view: openingView = [864, 545], ground, fitWidth = false, headroom = MARGIN, exclusive = false }: Options = {},
+  { still = false, view: openingView = [864, 545], ground, fitWidth = false, headroom = MARGIN, exclusive = false, foldAway = false }: Options = {},
 ): Grove<T> {
   const { layout: world, place } = layout(spec)
   const nodes = new Map<string, GroveNode<T>>()
@@ -113,7 +120,7 @@ export function createGrove<T>(
     if (place(id)) index()
   }
 
-  const tweens = new Map<string, { from: number; start: number; duration: number }>()
+  const tweens = new Map<string, { from: number; to: number; start: number; duration: number }>()
   const expanded = new Set<string>([ROOT_ID])
   const visible = new Set<string>()
   const openIcons = new Set<string>()
@@ -169,8 +176,14 @@ export function createGrove<T>(
     ]
   }
 
-  // Where growth is headed: an open folder's branch grows to its tip, a closed one back to nothing.
-  const intended = (id: string) => (expanded.has(id) ? world.branches.get(id)!.path.length : 0)
+  // Where growth is headed: an open folder's branch grows to its tip, a closed one back to nothing,
+  // and when folding away, an open one only as far as the child folder open on it.
+  const intended = (id: string) => {
+    if (!expanded.has(id)) return 0
+    let reach = world.branches.get(id)!.path.length
+    if (foldAway) for (const child of childFolders.get(id) ?? []) if (expanded.has(child.id)) reach = Math.min(reach, child.revealAt)
+    return reach
+  }
 
   /** What the plant will cover once growth settles, labels included. */
   const measure = (): Bounds => {
@@ -302,13 +315,24 @@ export function createGrove<T>(
       (sibling) => sibling.id !== id && !expanded.has(sibling.id) && (growth.get(sibling.id) ?? 0) > 0,
     )
 
-  // A closing branch can't retract past a child folder whose branch is still out.
+  // A closing branch can't retract past a child folder whose branch is still out,
+  // and when folding away, an open one can't grow back over it until it's in.
   const floorOf = (id: string) => {
     let floor = 0
     for (const child of childFolders.get(id) ?? []) {
       if ((growth.get(child.id) ?? 0) > 0) floor = Math.max(floor, child.revealAt)
     }
     return floor
+  }
+  const ceilingOf = (id: string) => {
+    let ceiling = Infinity
+    if (foldAway) for (const child of childFolders.get(id) ?? []) if ((growth.get(child.id) ?? 0) > 0) ceiling = Math.min(ceiling, child.revealAt)
+    return ceiling
+  }
+  // A folder whose parent is still folding away what hangs past it.
+  const parentFolding = (id: string) => {
+    const parent = nodes.get(id)!.parent
+    return foldAway && (growth.get(parent) ?? 0) > intended(parent)
   }
 
   const refresh = () => {
@@ -422,18 +446,24 @@ export function createGrove<T>(
     step(dt) {
       clock += dt
       for (const branch of deepestFirst) {
-        const end = branch.path.length
         let g = growth.get(branch.id)!
         if (expanded.has(branch.id)) {
           if (branch.id === ROOT_ID && clock < INTRO_DELAY && !still) continue
           // A deep link opens folders that haven't grown in yet; each waits for its own folder to show.
           if (branch.id !== ROOT_ID && !visible.has(branch.id)) continue
           if (exclusive && branch.id !== ROOT_ID && siblingOut(branch.id)) continue
-          if (still) g = end
+          if (branch.id !== ROOT_ID && parentFolding(branch.id)) continue
+          const end = Math.min(intended(branch.id), ceilingOf(branch.id))
+          if (g > end) {
+            // Folding away what hangs past the folder that just opened.
+            tweens.delete(branch.id)
+            const floor = Math.max(end, floorOf(branch.id))
+            g = still ? floor : Math.max(floor, g - RETRACT_SPEED * dt)
+          } else if (still) g = end
           else if (g < end) {
             let tween = tweens.get(branch.id)
-            if (!tween) {
-              tween = { from: g, start: clock - dt, duration: growTime(end - g) }
+            if (!tween || tween.to !== end) {
+              tween = { from: g, to: end, start: clock - dt, duration: growTime(end - g) }
               tweens.set(branch.id, tween)
             }
             g = tween.from + (end - tween.from) * easeOut(Math.min(1, (clock - tween.start) / tween.duration))

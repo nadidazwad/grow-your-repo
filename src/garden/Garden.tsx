@@ -25,6 +25,8 @@ interface Props {
   headroom?: number
   /** Opening a folder closes its open siblings, so they can grow into the same room. */
   exclusive?: boolean
+  /** Opening a folder draws the branch it hangs on back to it: what hangs further along folds away until it closes. */
+  foldAway?: boolean
   /** World areas where other words sit, such as the name on the ground: twigs stop short of them. */
   keepOut?: Bounds[]
   /** Whatever else lives in the plant's world, given the grove and how it's viewed: the name on the ground, the address bar. */
@@ -32,7 +34,7 @@ interface Props {
 }
 
 /** A file tree drawn as a dithered plant, growing in from the left. Folders grow where they are; files are links that open in a new tab. */
-export function Garden({ tree, ground, frame, fitWidth, headroom, exclusive = false, keepOut: words = [], children }: Props) {
+export function Garden({ tree, ground, frame, fitWidth, headroom, exclusive = false, foldAway = false, keepOut: words = [], children }: Props) {
   const viewport = useViewport(frame)
   const { width, height, scale, dpr } = viewport
   const [grove] = useState(() =>
@@ -43,6 +45,7 @@ export function Garden({ tree, ground, frame, fitWidth, headroom, exclusive = fa
       fitWidth,
       headroom,
       exclusive,
+      foldAway,
     }),
   )
   useSyncExternalStore(grove.subscribe, () => grove.version)

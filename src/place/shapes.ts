@@ -13,6 +13,12 @@ export interface Shape {
   spread: number
   /** A branch carries its files first and its folders toward its tip. */
   foldersLast: boolean
+  /**
+   * Opening a folder draws the branch it hangs on back to it, so what hangs
+   * further along folds away and the folder's own branch climbs on into the
+   * room it leaves: placed for the grove's `foldAway`.
+   */
+  foldAway: boolean
   /** World px the view can rise above the plant. */
   headroom?: number
   ground: number
@@ -21,6 +27,10 @@ export interface Shape {
   right: number
   /** Branches stay between these, leaving room for the words either side of them. */
   walls: [number, number]
+  /** A branch that comes this close to a wall turns back, on to its next gesture, rather than run up along it. */
+  bounce?: number
+  /** How far a folder's way out leans up, past facing out from the branch it hangs on. */
+  lift: number
   trunk: {
     start: Vec2
     heading: number
@@ -67,10 +77,12 @@ export const wide: Shape = {
   batch: 15,
   spread: 1100,
   foldersLast: false,
+  foldAway: false,
   ground: WIDE_GROUND,
   left: -420,
   right: Infinity,
   walls: [-420, Infinity],
+  lift: 0,
   trunk: {
     start: [-480, 40],
     heading: -0.3,
@@ -118,11 +130,16 @@ export const tall: Shape = {
   batch: 8,
   spread: 560,
   foldersLast: true,
+  foldAway: true,
   headroom: 110,
   ground: 0,
   left: 6,
   right: TALL_WIDTH - 6,
   walls: [44, TALL_WIDTH - 44],
+  // Each branch sweeps across the column and back, as the hand-placed ones do, so long names find room by a wall.
+  bounce: 40,
+  // Up a column, a folder's branch climbs out of it rather than run off sideways over its own name.
+  lift: 1,
   trunk: {
     start: [-48, -290],
     heading: -0.05,
@@ -134,8 +151,8 @@ export const tall: Shape = {
     ],
   },
   sway: () => [
-    { heading: [-2.55, -2.2], length: [110, 200] },
-    { heading: [-0.95, -0.6], length: [110, 200] },
+    { heading: [-2.55, -2.2], length: [260, 460] },
+    { heading: [-0.95, -0.6], length: [260, 460] },
   ],
   name(text, single = false) {
     const cut = text.indexOf('/')

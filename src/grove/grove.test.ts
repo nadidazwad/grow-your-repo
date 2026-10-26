@@ -210,6 +210,51 @@ describe('grove', () => {
     expect(grove.isVisible('/e/f.txt')).toBe(true)
   })
 
+  it('can fold away what hangs past an open folder, and grow it back once that folder closes', () => {
+    // Root ── a/ ─┬─ x.txt
+    //             ├─ b/ ── c.txt
+    //             └─ y.txt
+    const climbing: FolderSpec = {
+      ...tree,
+      children: [
+        {
+          name: 'a',
+          at: [50, -20],
+          label: 'right',
+          branch: { path: [[55, -100], [50, -200], [55, -300]] },
+          children: [
+            { name: 'x.txt', at: [80, -80], label: 'right' },
+            { name: 'b', at: [30, -150], label: 'left', branch: { path: [[-50, -200], [-60, -300]] }, children: [{ name: 'c.txt', at: [-40, -250], label: 'right' }] },
+            { name: 'y.txt', at: [80, -260], label: 'right' },
+          ],
+        },
+      ],
+    }
+    const grove = createGrove(climbing, { exclusive: true, foldAway: true })
+    grove.open('/a')
+    settle(grove)
+    expect(grove.isVisible('/a/y.txt')).toBe(true)
+
+    grove.open('/a/b')
+    for (let frame = 0; frame < 600; frame++) {
+      grove.step(1 / 60)
+      // b/ only grows once what hangs past it has folded away.
+      if (grove.isVisible('/a/y.txt')) expect(grove.growth('/a/b')).toBe(0)
+    }
+    expect(grove.isVisible('/a/x.txt')).toBe(true)
+    expect(grove.isVisible('/a/y.txt')).toBe(false)
+    expect(grove.isVisible('/a/b/c.txt')).toBe(true)
+
+    grove.close('/a/b')
+    for (let frame = 0; frame < 600; frame++) {
+      grove.step(1 / 60)
+      // a/ only grows back once b/ is in.
+      if (grove.growth('/a/b') > 0) expect(grove.isVisible('/a/y.txt')).toBe(false)
+    }
+    expect(grove.isVisible('/a/y.txt')).toBe(true)
+    expect(grove.growth('/a')).toBe(grove.layout.branches.get('/a')!.path.length)
+  })
+
   it('ignores branches of folders that are still closed when deciding whether to pan', () => {
     const grove = createGrove(tree)
     // Tall enough for the top level, not for b/, which sits inside a/ until a/ opens.

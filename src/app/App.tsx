@@ -59,6 +59,7 @@ export default function App() {
           fitWidth={shape.fitWidth}
           headroom={shape.headroom}
           exclusive
+          foldAway={shape.foldAway}
           keepOut={[placed.name.line]}
         >
           {(grove, view) => <Grown grove={grove} view={view} repo={repo} placed={placed} line={say(<Lines.About repo={repo} />)} onGrow={grow} />}

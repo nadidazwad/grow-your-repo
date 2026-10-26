@@ -12,7 +12,7 @@ Paste a public GitHub repo's link and its file tree grows as a dithered plant. I
 - **Big folders** carry fifteen entries a branch. The rest wait on a "+ 1,240 more" node at the tip, which grows the next fifteen when you open it.
 - **The address** is the repo and wherever you are in it, like `/vitejs/vite/packages/vite`. A link grows straight down to that folder, and Back walks the plant back.
 - **The name on the ground** is also where the next repo goes: click it, type or paste over it, and a new plant grows.
-- **The phone** gets a plant of its own, a vine climbing a narrow column, with the name stacked on the ground.
+- **The phone** gets a plant of its own, a vine climbing a narrow column, with the name stacked on the ground. Its branches sweep from wall to wall, the way I drew them by hand for the portfolio. Opening a folder there draws the branch it hangs on back to it: what hangs further along folds away, and the vine climbs on from the open folder into the sky they leave. Step back out and they grow back.
 - **The plant itself**, the dither, the icons and the sound all come from garden; its README says how they're made. The file glyphs for code and data are new, drawn on the same pixel grid.
 
 I build with AI agents. The taste, the direction and the final call are mine.
