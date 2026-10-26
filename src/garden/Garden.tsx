@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState, useSyncExternalStore, type CSSProperties, type ReactNode, type WheelEvent } from 'react'
-import { createGrove, type Bounds, type FolderSpec, type Grove, type GroveBranch, type GroveNode } from '../grove'
+import { createGrove, type Bounds, type FolderSpec, type Grove, type GroveBranch } from '../grove'
 import { sound } from '../sound'
 import type { Entry } from './entry.ts'
 import { labelArea } from './labels.ts'
@@ -31,7 +31,7 @@ interface Props {
   children?: (grove: Grove<Entry>, view: View) => ReactNode
 }
 
-/** A file tree drawn as a dithered plant, growing in from the left. Folders grow where they are; files open in a new tab. */
+/** A file tree drawn as a dithered plant, growing in from the left. Folders grow where they are; files are links that open in a new tab. */
 export function Garden({ tree, ground, frame, fitWidth, headroom, exclusive = false, keepOut: words = [], children }: Props) {
   const viewport = useViewport(frame)
   const { width, height, scale, dpr } = viewport
@@ -60,12 +60,6 @@ export function Garden({ tree, ground, frame, fitWidth, headroom, exclusive = fa
     grove.pan((event.deltaX * unit) / scale, (event.deltaY * unit) / scale)
   }
 
-  const open = (node: GroveNode<Entry>) => {
-    if (node.data?.kind !== 'file') return
-    sound.play('link')
-    window.open(node.data.href, '_blank', 'noopener')
-  }
-
   return (
     <div
       className="fixed inset-0 touch-none overflow-hidden select-none data-dragging:cursor-grabbing data-pannable:cursor-grab"
@@ -79,7 +73,7 @@ export function Garden({ tree, ground, frame, fitWidth, headroom, exclusive = fa
           <Scene grove={grove} keepOut={keepOut} scale={scale} dpr={dpr} />
         </Suspense>
       </div>
-      <Nodes grove={grove} view={view} label={tree.name} onOpen={open} />
+      <Nodes grove={grove} view={view} label={tree.name} />
       {children?.(grove, view)}
     </div>
   )
