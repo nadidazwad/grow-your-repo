@@ -8,6 +8,8 @@ export type Entry =
       note?: string
       /** Shown instead of the name, as by the node holding the rest of a big folder. */
       title?: string
+      /** It holds the rest of a big folder: drawn as a folder with dots. */
+      rest?: boolean
     }
   | {
       kind: 'file'

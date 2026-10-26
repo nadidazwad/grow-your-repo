@@ -69,8 +69,8 @@ const NOTE = 'halo whitespace-nowrap text-[length:calc(var(--spacing)*12.5)] lea
 const HOVER = 'group-hover:text-accent group-focus-visible:text-accent'
 
 function Folder({ node, shown, open, here, onToggle }: { node: GroveNode<Entry>; shown: boolean; open: boolean; here: boolean; onToggle: () => void }) {
-  const glyph: GlyphName = open ? 'openFolder' : 'folder'
   const entry = node.data?.kind === 'folder' ? node.data : undefined
+  const glyph: GlyphName = entry?.rest ? (open ? 'openMore' : 'more') : open ? 'openFolder' : 'folder'
   return (
     <Item
       node={node}

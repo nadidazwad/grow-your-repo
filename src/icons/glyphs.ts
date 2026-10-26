@@ -27,6 +27,34 @@ const OPEN_FOLDER = `
 ###########....
 `
 
+/** The rest of a big folder: a folder with dots across it. */
+const MORE = `
+.####.......
+#....#......
+#.....#####.
+#..........#
+#..........#
+#.##.##.##.#
+#.##.##.##.#
+#..........#
+#..........#
+.##########.
+`
+
+/** Open, the dots ride on the flap. */
+const OPEN_MORE = `
+.###...........
+#..############
+#.#...........#
+#.#..........#.
+#.#..........#.
+##.##.##.##.#..
+##.##.##.##.#..
+##.........#...
+#..........#...
+###########....
+`
+
 const TEXT = `
 ######...
 #....##..
@@ -246,6 +274,8 @@ const ARROW_RIGHT = `
 export type GlyphName =
   | 'folder'
   | 'openFolder'
+  | 'more'
+  | 'openMore'
   | 'text'
   | 'page'
   | 'code'
@@ -278,6 +308,8 @@ export interface Glyph {
 export const glyphs: Record<GlyphName, Glyph> = {
   folder: compile(FOLDER),
   openFolder: compile(OPEN_FOLDER),
+  more: compile(MORE),
+  openMore: compile(OPEN_MORE),
   text: compile(TEXT),
   page: compile(PAGE),
   code: compile(CODE),

@@ -94,7 +94,7 @@ export function placeRepo(repo: Repo, shape: Shape = wide): Placed {
       at,
       label,
       load,
-      data: item.kind === 'folder' ? { kind: 'folder' } : { kind: 'folder', title: `+ ${item.rest.length.toLocaleString('en')} more` },
+      data: item.kind === 'folder' ? { kind: 'folder' } : { kind: 'folder', title: `+ ${item.rest.length.toLocaleString('en')} more`, rest: true },
       grow: () => grow(id, itemsOf(children), at, load),
     }
   }
