@@ -8,7 +8,8 @@ import { Masthead } from './Masthead.tsx'
 import * as Lines from './lines.tsx'
 import { useRepo } from './useRepo.ts'
 
-const EXAMPLES = ['facebook/react', 'vercel/next.js', 'nadidazwad/garden']
+// Repos at their current names: a moved one costs GitHub an extra request to redirect.
+const EXAMPLES = ['vitejs/vite', 'vercel/next.js', 'nadidazwad/garden']
 
 /** The page: an empty field standing on the ground until a repo is in, then the repo growing out of it. */
 export default function App() {
